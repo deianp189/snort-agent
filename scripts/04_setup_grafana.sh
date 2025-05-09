@@ -13,6 +13,12 @@ fi
 
 GCONF="/etc/grafana/grafana.ini"
 
+# -----------------------------------------------
+# ● Fuerza credenciales admin antes del primer arranque
+grep -q "^admin_password" "$GCONF" || \
+  sed -i '/^\[security\]/a admin_user = admin\nadmin_password = admin' "$GCONF"
+# -----------------------------------------------
+
 # Activar modo anónimo
 if grep -q "^\[auth.anonymous\]" "$GCONF"; then
   sed -i '/^\[auth.anonymous\]/,/^\[/ s/^;*enabled = .*$/enabled = true/' "$GCONF"
