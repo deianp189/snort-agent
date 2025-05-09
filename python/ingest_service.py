@@ -1,22 +1,31 @@
 #!/usr/bin/env python3
-import sqlite3, json, os, time
+import pymysql, json, os, time
 
+DB_CNF = "/etc/rsnort-agent/db.cnf"
 AGENT_ID_FILE = "/etc/rsnort-agent/agent.id"
-DB_PATH = "/var/lib/rsnort-agent/rsnort_agent.db"
 ALERT_LOG = "/opt/snort/logs/live/alert_json.txt"
 
+# Leer el ID del agente una sola vez
 with open(AGENT_ID_FILE) as f:
     AGENT_ID = f.read().strip()
 
-conn = sqlite3.connect(DB_PATH, isolation_level=None, check_same_thread=False)
-conn.execute("PRAGMA journal_mode=WAL")
-
 def insert_alert(rec):
-    fields = ("timestamp","proto","dir","src_addr","src_port","dst_addr","dst_port",
-              "msg","sid","gid","priority")
+    fields = (
+        "timestamp", "proto", "dir", "src_addr", "src_port",
+        "dst_addr", "dst_port", "msg", "sid", "gid",
+        "priority", "country_code", "latitude", "longitude"
+    )
     vals = [rec.get(k) for k in fields]
-    conn.execute(f"""INSERT INTO alerts ({','.join(fields)}, agent_id)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""", vals + [AGENT_ID])
+    
+    try:
+        conn = pymysql.connect(read_default_file=DB_CNF, autocommit=True)
+        with conn.cursor() as cur:
+            cur.execute(f"""
+                INSERT INTO alerts ({','.join(fields)}, agent_id)
+                VALUES ({','.join(['%s'] * len(fields))}, %s)
+            """, vals + [AGENT_ID])
+    except Exception as e:
+        print(f"[ERROR] Fallo al insertar alerta: {e}")
 
 def follow(path):
     with open(path, "r") as fh:
@@ -29,8 +38,8 @@ def follow(path):
             try:
                 data = json.loads(line)
                 insert_alert(data)
-            except Exception:
-                pass  # descartar líneas corruptas
+            except json.JSONDecodeError:
+                continue  # descartar líneas corruptas
 
 while True:
     try:

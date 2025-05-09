@@ -1,38 +1,50 @@
 #!/usr/bin/env bash
-    set -euo pipefail
-    source "$(dirname "$0")/00_common.sh"
+set -euo pipefail
+source "$(dirname "$0")/00_common.sh"
 
-    apt-get update -y
-    apt-get install -y sqlite3
+apt-get update -y
+DEBIAN_FRONTEND=noninteractive apt-get install -y mariadb-server
 
-    if [[ ! -f "$DB_PATH" ]]; then
-      echo "🗄️  Creando base de datos SQLite en $DB_PATH"
-      cat > /tmp/rsnort_schema.sql <<'SQL'
-    CREATE TABLE IF NOT EXISTS alerts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp TEXT,
-        proto TEXT,
-        dir TEXT,
-        src_addr TEXT,
-        src_port INTEGER,
-        dst_addr TEXT,
-        dst_port INTEGER,
-        msg TEXT,
-        sid INTEGER,
-        gid INTEGER,
-        priority INTEGER,
-        agent_id TEXT
-    );
-    CREATE TABLE IF NOT EXISTS system_metrics (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        cpu_usage REAL,
-        memory_usage REAL,
-        temperature REAL,
-        disk_usage REAL,
-        agent_id TEXT
-    );
+systemctl enable --now mariadb
+
+mysql --defaults-extra-file="$DB_CNF" -e "quit" 2>/dev/null || {
+  mysql -uroot <<SQL
+CREATE DATABASE IF NOT EXISTS $DB_NAME CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASS';
+GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'127.0.0.1';
+FLUSH PRIVILEGES;
 SQL
-      sqlite3 "$DB_PATH" < /tmp/rsnort_schema.sql
-      rm /tmp/rsnort_schema.sql
-    fi
+}
+
+# Esquema (el mismo que usaste en pruebas, más agent_id)
+mysql --defaults-extra-file="$DB_CNF" <<'SQL'
+CREATE TABLE IF NOT EXISTS alerts (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  timestamp VARCHAR(255),
+  proto VARCHAR(50),
+  dir VARCHAR(10),
+  src_addr VARCHAR(45),
+  src_port INT,
+  dst_addr VARCHAR(45),
+  dst_port INT,
+  msg VARCHAR(255),
+  sid INT,
+  gid INT,
+  priority INT,
+  country_code CHAR(2),
+  latitude FLOAT,
+  longitude FLOAT,
+  agent_id VARCHAR(64)
+);
+
+CREATE TABLE IF NOT EXISTS system_metrics (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  cpu_usage FLOAT,
+  memory_usage FLOAT,
+  temperature FLOAT,
+  disk_usage FLOAT,
+  agent_id VARCHAR(64)
+);
+SQL
+echo "🗄️  MariaDB listo (DB $DB_NAME, usuario $DB_USER)"

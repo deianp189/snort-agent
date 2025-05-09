@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-apt-get install -y apt-transport-https software-properties-common wget
+apt-get install -y apt-transport-https software-properties-common wget jq curl
 
-# Instala grafana si no está presente
+# Instala Grafana si no está presente
 if ! command -v grafana-server >/dev/null 2>&1; then
   wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
   add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
@@ -38,3 +38,16 @@ chown -R grafana:grafana /etc/grafana /var/lib/grafana /var/log/grafana
 # Habilitar y reiniciar Grafana
 systemctl enable grafana-server
 systemctl restart grafana-server
+
+# Crear API key de administrador si no existe
+API_KEY_FILE="/etc/rsnort-agent/grafana.token"
+if [[ ! -f "$API_KEY_FILE" ]]; then
+  echo "[INFO] Esperando a que Grafana arranque para generar API key..."
+  sleep 5
+  KEY=$(curl -s -u admin:admin -H "Content-Type: application/json" \
+    -d '{"name":"rsnort-agent","role":"Admin"}' \
+    http://localhost:3000/api/auth/keys | jq -r .key)
+  echo "$KEY" > "$API_KEY_FILE"
+  chmod 600 "$API_KEY_FILE"
+  echo "[INFO] API key guardada en $API_KEY_FILE"
+fi

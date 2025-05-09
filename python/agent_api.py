@@ -1,32 +1,34 @@
 #!/usr/bin/env python3
 from fastapi import FastAPI, HTTPException, Body
-import sqlite3, subprocess, os
+import pymysql, subprocess, os
 
-DB_PATH = "/var/lib/rsnort-agent/rsnort_agent.db"
+# Cambios aquí: configuración del archivo y ID del agente
+DB_CNF = "/etc/rsnort-agent/db.cnf"
 AGENT_ID = open("/etc/rsnort-agent/agent.id").read().strip()
 CUSTOM_RULES = "/usr/local/snort/etc/snort/custom.rules"
 
-app = FastAPI(title="R‑Snort Agent API", version="1.0.0")
+app = FastAPI(title="R‑Snort Agent API", version="1.1.0")
 
+# Nueva función query utilizando pymysql y archivo de configuración
 def query(sql, params=()):
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.execute(sql, params)
-        return [dict(r) for r in cur.fetchall()]
+    conn = pymysql.connect(read_default_file=DB_CNF, cursorclass=pymysql.cursors.DictCursor)
+    with conn:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            return cur.fetchall()
 
 @app.get("/status")
 def status():
     snort_ok = subprocess.call(["systemctl", "is-active", "--quiet", "snort"]) == 0
-    db_size = os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0
-    return {"agent_id": AGENT_ID, "snort_running": snort_ok, "db_size": db_size}
+    return {"agent_id": AGENT_ID, "snort_running": snort_ok}
 
 @app.get("/alerts")
 def get_alerts(limit: int = 100):
-    return query("SELECT * FROM alerts ORDER BY id DESC LIMIT ?", (limit,))
+    return query("SELECT * FROM alerts ORDER BY id DESC LIMIT %s", (limit,))
 
 @app.get("/metrics")
 def get_metrics(limit: int = 1000):
-    return query("SELECT * FROM system_metrics ORDER BY id DESC LIMIT ?", (limit,))
+    return query("SELECT * FROM system_metrics ORDER BY id DESC LIMIT %s", (limit,))
 
 @app.get("/rules")
 def get_rules():
