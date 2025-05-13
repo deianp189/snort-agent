@@ -1,6 +1,6 @@
 # Snort Agent
 
-> **R‑Snort Agent** convierte cualquier instancia de Snort 3 en un agente gestionado remotamente mediante API REST, con ingesta automática de alertas y métricas en SQLite, integración con Grafana y rotación de logs.
+> **R‑Snort Agent** convierte cualquier instancia de Snort 3 en un agente gestionado remotamente mediante API REST, con ingesta automática de alertas y métricas, integración con Grafana, y rotación de logs preconfigurada.
 
 ---
 
@@ -9,20 +9,25 @@
 ```text
 .
 ├── install.sh
+├── dashboard_instance.json
 ├── python
 │   ├── agent_api.py
 │   ├── ingest_service.py
 │   └── metrics_timer.py
-├── README.md
-└── scripts
-    ├── 00_common.sh
-    ├── 01_install_db.sh
-    ├── 02_configure_snort.sh
-    ├── 03_log_rotation.sh
-    ├── 04_setup_grafana.sh
-    ├── 05_setup_python_env.sh
-    ├── 06_install_services.sh
-    └── backup_logs.sh
+├── scripts
+│   ├── 00_common.sh
+│   ├── 01_install_db.sh
+│   ├── 02_configure_snort.sh
+│   ├── 03_log_rotation.sh
+│   ├── 04_setup_grafana.sh
+│   ├── 05_setup_python_env.sh
+│   ├── 06_install_services.sh
+│   ├── 07_import_dashboard.sh
+│   └── backup_logs.sh
+├── docs
+│   └── index.md
+├── index.md
+└── README.md
 ```
 
 ---
@@ -42,62 +47,67 @@
    sudo ./install.sh
    ```
 
-3. **Verifica**:
+3. **Verifica servicios**:
+
+   ```bash
+   systemctl status snort rsnort-api rsnort-ingest rsnort-metrics.timer grafana-server
+   ```
+
+4. **Accede a las interfaces**:
 
    * API REST → `http://<IP_DEL_SERVIDOR>:8080/docs`
-   * Grafana    → `http://<IP_DEL_SERVIDOR>:3000`
+   * Grafana → `http://<IP_DEL_SERVIDOR>:3000` (sin login)
 
 ---
 
 ## ⚙️ Configuración
 
-### Parámetros principales
+### Parámetros clave
 
-* **Directorio logs**: `/opt/snort/logs/live`
+* **Logs de Snort**: `/opt/snort/logs/live/alert_json.txt`
 * **Base de datos**: `/var/lib/rsnort-agent/rsnort_agent.db` (SQLite)
-* **API**: puerto `8080`
-* **Métricas**: cada 30 s en la tabla `system_metrics`
-* **Grafana**: anónimo, embedding habilitado
+* **API REST**: Puerto `8080` (FastAPI)
+* **Métricas**: se almacenan cada 30 s
+* **Grafana**: anónimo, con embedding habilitado
+* **Dashboard JSON**: `dashboard_instance.json` (variable `${snort}` embebida)
 
-### Personalización
+### Rotación de logs
 
-* Edita `/usr/local/snort/etc/snort/snort.lua` para ajustar reglas o preprocesadores.
-* Personaliza el crontab en `/etc/cron.d/rsnort_backup` para cambiar horarios de backup.
-
----
-
-## 📖 Uso
-
-### Consultar alertas (REST)
-
-```bash
-curl http://localhost:8080/alerts?limit=10
-```
-
-### Obtener métricas
-
-```bash
-curl http://localhost:8080/metrics?limit=20
-```
-
-### Reiniciar Snort
-
-```bash
-curl -X POST http://localhost:8080/restart
-```
+* Logrotate en `/etc/logrotate.d/snort-alert-json`
+* Backup diario (cron) a las 01:00 → `/etc/cron.d/rsnort_backup`
 
 ---
 
-## 🐞 Resolución de problemas
+## 📊 Visualización
 
-* **No genera alertas**: asegúrate de que existe el bloque `alert_json` en `snort.lua` y que el servicio Snort está activo.
-* **No arranca Grafana**: revisa `/etc/grafana/grafana.ini` y desactiva JWT:
+El dashboard de Grafana se instala automáticamente en el script `07_import_dashboard.sh`.
+Usa `${snort}` como variable de datasource, mapeada internamente a `Snort-MariaDB`, y contiene:
 
-  ```ini
-  [auth.jwt]
-  enabled = false
-  ```
-* **Permisos**: ejecuta:
+* Temperatura CPU
+* Estadísticas por severidad
+* Historial de alertas
+* Uso de recursos
+
+---
+
+## 📖 Endpoints API REST
+
+| Método | Ruta       | Descripción                  |
+| ------ | ---------- | ---------------------------- |
+| GET    | `/alerts`  | Últimas alertas              |
+| GET    | `/metrics` | Métricas del sistema         |
+| GET    | `/status`  | Estado del sistema           |
+| GET    | `/rules`   | Reglas activas               |
+| PUT    | `/rules`   | Subir nuevas reglas          |
+| POST   | `/restart` | Reinicia el proceso de Snort |
+
+---
+
+## 🔎 Resolución de problemas
+
+* **Grafana no carga el dashboard**: asegúrate de que no quedan referencias a `${DS_SNORT-MARIADB}` en el JSON.
+* **No se generan alertas**: revisa `snort.lua` y asegúrete de que la sección `alert_json` está habilitada.
+* **Permisos de logs**:
 
   ```bash
   sudo chown -R root:root /opt/snort/logs/live
@@ -106,16 +116,15 @@ curl -X POST http://localhost:8080/restart
 
 ---
 
-## 🤝 Contribuir
+## 🤝 Contribución
 
-1. Haz un **fork**
-2. Crea una **rama** (`git checkout -b feature/nueva-característica`)
-3. Realiza los **cambios** y haz **commit**
-4. Empuja tu rama (`git push origin feature/nueva-característica`)
-5. Abre un **Pull Request**
+1. Forkea este repositorio
+2. Crea una rama (`git checkout -b mejora-x`)
+3. Realiza los cambios y haz commit
+4. Abre un Pull Request
 
 ---
 
 ## 📝 Licencia
 
-MIT © 2025 deianp189
+MIT © 2025 Deian Orlando Petrovics

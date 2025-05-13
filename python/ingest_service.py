@@ -12,13 +12,11 @@ def normalize_ts(raw: str) -> str:
         return t.strftime("%Y-%m-%d %H:%M:%S")
     except ValueError:
         pass
-
     try:
         t = datetime.datetime.fromisoformat(raw)
         return t.strftime("%Y-%m-%d %H:%M:%S")
     except ValueError:
         pass
-
     print(f"[WARN] Timestamp no reconocible: {raw}. Insertando tal cual.", flush=True)
     return raw
 
@@ -28,8 +26,6 @@ with open(AGENT_ID_FILE) as f:
 def insert_alert(rec):
     ts_original = rec.get("timestamp", "")
     ts_normalizado = normalize_ts(ts_original)
-    if ts_normalizado == ts_original:
-        print(f"[WARN] Timestamp no normalizado: {ts_original}", flush=True)
     rec["timestamp"] = ts_normalizado
 
     if rec["timestamp"] is None:
@@ -54,39 +50,67 @@ def insert_alert(rec):
                 INSERT INTO alerts ({','.join(fields)}, agent_id)
                 VALUES ({','.join(['%s'] * len(fields))}, %s)
             """, vals + [AGENT_ID])
-            print(f"[INFO] Insertando alerta con timestamp: {rec['timestamp']}", flush=True)
+            print(f"[INFO] Insertada alerta con timestamp: {rec['timestamp']}", flush=True)
     except Exception as e:
         print(f"[ERROR] Fallo al insertar alerta: {e}", flush=True)
 
-def follow(path):
+def follow_file(path):
     alertas_vistas = set()
+    fh = None
+    last_inode = None
+    last_data_time = time.time()
+
     while True:
         try:
-            with open(path, "r") as fh:
-                for linea in fh:
-                    linea = linea.strip()
-                    if not linea:
-                        continue
-                    clave = (linea.rfind('"timestamp"'), linea[-32:])
-                    if clave in alertas_vistas:
-                        continue
-                    alertas_vistas.add(clave)
+            stat_info = os.stat(path)
+            inode_actual = stat_info.st_ino
 
-                    try:
-                        data = json.loads(linea)
-                        insert_alert(data)
-                    except json.JSONDecodeError as e:
-                        print(f"[WARN] JSON inválido ({e}): {linea[:120]}", flush=True)
+            # Detectar primera apertura o rotación
+            if fh is None or inode_actual != last_inode:
+                if fh:
+                    fh.close()
+                fh = open(path, "r")
+
+                if last_inode is None:
+                    # Solo al inicio, no tras cada rotación
+                    fh.seek(0, os.SEEK_END)
+
+                last_inode = inode_actual
+                print(f"[INFO] Reabierto archivo: {path}", flush=True)
+
+            linea = fh.readline()
+            if not linea:
+                if time.time() - last_data_time > 10:
+                    print("[INFO] Reintentando por inactividad...", flush=True)
+                    fh.close()
+                    fh = None
+                time.sleep(0.5)
+                continue
+
+            linea = linea.strip()
+            if not linea:
+                continue
+
+            clave = hash(linea)
+            if clave in alertas_vistas:
+                continue
+            alertas_vistas.add(clave)
+
+            try:
+                data = json.loads(linea)
+                insert_alert(data)
+                last_data_time = time.time()
+            except json.JSONDecodeError as e:
+                print(f"[WARN] JSON inválido ({e}): {linea[:120]}", flush=True)
+
+            if len(alertas_vistas) > 10000:
+                alertas_vistas.clear()
+
         except FileNotFoundError:
-            pass
+            print(f"[WARN] Archivo no encontrado: {path}. Esperando...", flush=True)
+            time.sleep(1)
+        except Exception as e:
+            print(f"[ERROR] Fallo inesperado en follow_file: {e}", flush=True)
+            time.sleep(1)
 
-        if len(alertas_vistas) > 10000:
-            alertas_vistas.clear()
-
-        time.sleep(1)
-
-while True:
-    try:
-        follow(ALERT_LOG)
-    except FileNotFoundError:
-        time.sleep(1)
+follow_file(ALERT_LOG)
