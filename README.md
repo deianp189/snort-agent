@@ -125,4 +125,4 @@ curl -X POST http://localhost:8080/restart
 
 ## ⚖️ Licencia
 
-Este proyecto está bajo la licencia **MIT**. Consulta [LICENSE](LICENSE) para más detalles.
+Este proyecto está bajo la licencia **MIT**. Consulta [LICENSE](https://choosealicense.com/licenses/mit/) para más detalles.
