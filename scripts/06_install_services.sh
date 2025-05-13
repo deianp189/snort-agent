@@ -29,7 +29,7 @@ SERVICE
 
     [Service]
     WorkingDirectory=/opt/rsnort-agent/python
-    ExecStart=/opt/rsnort-agent/venv/bin/uvicorn agent_api:app --host 0.0.0.0 --port 8080
+    ExecStart=/opt/rsnort-agent/venv/bin/uvicorn agent_api:app --host 0.0.0.0 --port 9000
     Restart=always
 
     [Install]
