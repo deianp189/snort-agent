@@ -11,7 +11,7 @@ export AGENT_ID=$(cat "$AGENT_ID_FILE")
 
 # Credenciales MariaDB (solo local)
 DB_USER=rsnort
-DB_PASS='cambio_me'          # ← si quieres, genera y almacena en vault
+DB_PASS='cambio_me'
 DB_NAME=rsnort_agent
 DB_CNF=$AGENT_STATE/db.cnf   # usado por los scripts Python y mysql CLI
 

@@ -6,16 +6,14 @@ import os
 DB_CNF = "/etc/rsnort-agent/db.cnf"
 AGENT_ID_FILE = "/etc/rsnort-agent/agent.id"
 
-# Leer agent_id
 with open(AGENT_ID_FILE, "r") as f:
     AGENT_ID = f.read().strip()
 
-# Leer métricas del sistema
 cpu = psutil.cpu_percent(interval=1)
 mem = psutil.virtual_memory().percent
 disk = psutil.disk_usage("/").percent
 
-# Función robusta para temperatura
+# Función para temperatura
 def get_temperature():
     try:
         temps = psutil.sensors_temperatures()
@@ -41,7 +39,6 @@ def get_temperature():
     # Fallback simulado: estimar por uso de CPU
     return round(35 + (cpu / 12), 1)
 
-# Obtener temperatura
 temp = get_temperature()
 
 # Insertar en la base de datos

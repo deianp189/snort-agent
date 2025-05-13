@@ -16,7 +16,7 @@ FLUSH PRIVILEGES;
 SQL
 }
 
-# Esquema (el mismo que usaste en pruebas, más agent_id)
+# Esquema
 mysql --defaults-extra-file="$DB_CNF" <<'SQL'
 CREATE TABLE IF NOT EXISTS alerts (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
