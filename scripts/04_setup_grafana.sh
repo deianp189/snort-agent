@@ -2,124 +2,116 @@
 set -eEuo pipefail
 trap 'echo "❌ Error en el script $0 en la línea $LINENO. Código $?."' ERR
 
-# Registrar log para depuración automatizada
+# Log detallado
 exec > >(tee -a /var/log/rsnort-grafana-setup.log) 2>&1
 
-echo "[INFO] Iniciando configuración automática de Grafana..."
+echo "[INFO] Iniciando configuración automática de Grafana…"
 
-# Dependencias necesarias
+# Dependencias básicas
+DEBIAN_FRONTEND=noninteractive \
 apt-get install -y apt-transport-https software-properties-common wget jq curl net-tools
 
-# --------------------------
-# IPs y URLs
-# --------------------------
-# Interno: para validación y generación de API Key
-GRAFANA_LOCAL_URL="http://localhost:3000/api/health"
+# --------------------------------------------------------------------
+# 1. Descubrir IP y URLs
+# --------------------------------------------------------------------
+IP_LOCAL=$(ip -4 addr show scope global | awk '/inet/{print $2}' | cut -d/ -f1 | head -n1)
+[[ -z "$IP_LOCAL" ]] && { echo "❌ No se pudo detectar la IP local"; exit 1; }
 
-# Externo: para acceso del usuario
-IP_LOCAL=$(ip -4 addr show scope global | grep inet | awk '{print $2}' | cut -d/ -f1 | head -n1)
+GRAFANA_LOCAL_URL="http://$IP_LOCAL:3000/api/health"
 GRAFANA_PUBLIC_URL="http://$IP_LOCAL:3000"
 
-echo "[INFO] IP local detectada: $IP_LOCAL"
-echo "[INFO] Comprobación interna en: $GRAFANA_LOCAL_URL"
-echo "[INFO] URL externa visible para el usuario: $GRAFANA_PUBLIC_URL"
+echo "[INFO] IP local detectada:         $IP_LOCAL"
+echo "[INFO] Comprobación interna en:    $GRAFANA_LOCAL_URL"
+echo "[INFO] URL externa para el usuario $GRAFANA_PUBLIC_URL"
 
-# --------------------------
-# Instalación de Grafana
-# --------------------------
+# --------------------------------------------------------------------
+# 2. Instalar Grafana (si no existe)
+# --------------------------------------------------------------------
 if ! command -v grafana-server >/dev/null 2>&1; then
-  wget -q -O - https://packages.grafana.com/gpg.key | apt-key add -
-  add-apt-repository "deb https://packages.grafana.com/oss/deb stable main"
+  wget -qO- https://packages.grafana.com/gpg.key | apt-key add -
+  add-apt-repository -y "deb https://packages.grafana.com/oss/deb stable main"
   apt-get update -y
   apt-get install -y grafana
 fi
 
 GCONF="/etc/grafana/grafana.ini"
 
-# --------------------------
-# Configuración de grafana.ini
-# --------------------------
+# --------------------------------------------------------------------
+# 3. Configuración mínima en grafana.ini
+#    (solo lo imprescindible para no duplicar claves en cada ejecución)
+# --------------------------------------------------------------------
+# Secciones que pueden faltar
+grep -q '^\[security\]'       "$GCONF" || echo '[security]'        >> "$GCONF"
+grep -q '^\[auth.anonymous\]' "$GCONF" || echo -e '\n[auth.anonymous]' >> "$GCONF"
 
-# Admin credentials
-grep -q "^admin_password" "$GCONF" || \
-  sed -i '/^\[security\]/a admin_user = admin\nadmin_password = admin' "$GCONF"
+# allow_embedding = true
+sed -i '/^\[security\]/,/^\[/{s/^;*allow_embedding *= *.*/allow_embedding = true/; t}' "$GCONF"
+grep -q '^allow_embedding' "$GCONF" || \
+  sed -i '/^\[security\]/a allow_embedding = true' "$GCONF"
 
-# Anon access
-if grep -q "^\[auth.anonymous\]" "$GCONF"; then
-  sed -i '/^\[auth.anonymous\]/,/^\[/ s/^;*enabled = .*$/enabled = true/' "$GCONF"
-else
-  echo -e "\n[auth.anonymous]\nenabled = true" >> "$GCONF"
-fi
+# auth.anonymous.enabled = true
+sed -i '/^\[auth.anonymous\]/,/^\[/{s/^;*enabled *= *.*/enabled = true/; t}' "$GCONF"
+grep -q '^enabled *= *true' "$GCONF" || \
+  sed -i '/^\[auth.anonymous\]/a enabled = true' "$GCONF"
 
-# Embedding allowed
-if grep -q "^\[security\]" "$GCONF"; then
-  sed -i '/^\[security\]/,/^\[/ s/^;*allow_embedding = .*$/allow_embedding = true/' "$GCONF"
-else
-  echo -e "\n[security]\nallow_embedding = true" >> "$GCONF"
-fi
-
-# JWT off
-if ! grep -q "^\[auth.jwt\]" "$GCONF"; then
-  echo -e "\n[auth.jwt]\nenabled = false" >> "$GCONF"
-fi
+# Desactivar JWT si no existe la sección
+grep -q '^\[auth.jwt\]' "$GCONF" || echo -e '\n[auth.jwt]\nenabled = false' >> "$GCONF"
 
 # Permisos correctos
 chown -R grafana:grafana /etc/grafana /var/lib/grafana /var/log/grafana
 
-# --------------------------
-# Iniciar Grafana
-# --------------------------
+# --------------------------------------------------------------------
+# 4. Credenciales de administrador sin ensuciar el INI
+# --------------------------------------------------------------------
+export GF_SECURITY_ADMIN_USER=admin
+export GF_SECURITY_ADMIN_PASSWORD=admin
+
+# --------------------------------------------------------------------
+# 5. Arrancar Grafana
+# --------------------------------------------------------------------
 systemctl enable grafana-server
 systemctl restart grafana-server
 
-# --------------------------
-# Esperar a que Grafana esté activo
-# --------------------------
-TRIES=0
-MAX_TRIES=90  # 3 minutos
+# --------------------------------------------------------------------
+# 6. Esperar a que Grafana acepte peticiones
+# --------------------------------------------------------------------
+echo "[INFO] Esperando a que Grafana responda…"
+START=$(date +%s)
+TIMEOUT=600   # 10 minutos
 
-echo "[INFO] Esperando a que Grafana responda en $GRAFANA_LOCAL_URL..."
-
-while true; do
-  if curl -s --fail "$GRAFANA_LOCAL_URL" >/dev/null 2>&1; then
-    echo "✅ Grafana está accesible internamente tras $((TRIES * 2)) segundos"
-    break
-  fi
-
-  ((TRIES++))
-  if [[ $TRIES -ge $MAX_TRIES ]]; then
-    echo "❌ Timeout: Grafana no respondió tras $((TRIES * 2)) segundos"
-    journalctl -u grafana-server --no-pager | tail -n 30
-    exit 1
-  fi
+until curl -sf --max-time 2 "$GRAFANA_LOCAL_URL" >/dev/null; do
+  (( $(date +%s) - START > TIMEOUT )) && {
+      echo "❌ Timeout: Grafana no respondió tras $TIMEOUT s"
+      journalctl -u grafana-server --no-pager | tail -n 30
+      exit 1
+  }
   sleep 2
 done
+echo "✅ Grafana está accesible tras $(( $(date +%s) - START )) s"
 
-# --------------------------
-# Crear API Key si no existe
-# --------------------------
+# --------------------------------------------------------------------
+# 7. Crear API-key (una sola vez)
+# --------------------------------------------------------------------
 API_KEY_FILE="/etc/rsnort-agent/grafana.token"
 if [[ ! -f "$API_KEY_FILE" ]]; then
-  echo "[INFO] Generando API key de Grafana..."
+  echo "[INFO] Generando API-key…"
+  KEY=$(curl -s -u admin:admin -H 'Content-Type: application/json' \
+        -d '{"name":"rsnort-agent","role":"Admin"}' \
+        "http://$IP_LOCAL:3000/api/auth/keys" | jq -r .key)
 
-  KEY=$(curl -s -u admin:admin -H "Content-Type: application/json" \
-    -d '{"name":"rsnort-agent","role":"Admin"}' \
-    "http://localhost:3000/api/auth/keys" | jq -r .key)
+  [[ -z "$KEY" || "$KEY" == "null" ]] && {
+      echo "❌ Error: no se pudo generar la API-key"
+      exit 1
+  }
 
-  if [[ -z "$KEY" || "$KEY" == "null" ]]; then
-    echo "❌ Error: no se pudo generar la API key. Verifica credenciales o configuración de Grafana."
-    exit 1
-  fi
-
+  install -m600 /dev/null "$API_KEY_FILE"
   echo "$KEY" > "$API_KEY_FILE"
-  chmod 600 "$API_KEY_FILE"
-  echo "[INFO] API key guardada en: $API_KEY_FILE"
+  echo "[INFO] API-key guardada en $API_KEY_FILE"
 fi
 
-# --------------------------
-# Mensaje final
-# --------------------------
+# --------------------------------------------------------------------
+# 8. Mensaje final
+# --------------------------------------------------------------------
 echo "✅ Configuración de Grafana completada correctamente."
-echo "🌐 Accede a Grafana desde otro dispositivo usando:"
-echo "   → $GRAFANA_PUBLIC_URL"
-echo "🔑 La API key generada está en: $API_KEY_FILE"
+echo "🌐 Accede desde tu navegador a:  $GRAFANA_PUBLIC_URL"
+echo "🔑 API-key:                     $API_KEY_FILE"
