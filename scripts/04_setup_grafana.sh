@@ -81,7 +81,7 @@ MAX_TRIES=90  # 3 minutos
 echo "[INFO] Esperando a que Grafana responda en $GRAFANA_LOCAL_URL..."
 
 while true; do
-  if curl -s --fail "$GRAFANA_LOCAL_URL" >/dev/null; then
+  if curl -s --fail "$GRAFANA_LOCAL_URL" >/dev/null 2>&1; then
     echo "✅ Grafana está accesible internamente tras $((TRIES * 2)) segundos"
     break
   fi
