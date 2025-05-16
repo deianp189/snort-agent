@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eEuo pipefail
+trap 'echo "❌ Error en el script $0 en la línea $LINENO. Código $?."' ERR
+
+# Log a archivo para depuración automática
+exec > >(tee -a /var/log/rsnort-grafana-setup.log) 2>&1
 
 apt-get install -y apt-transport-https software-properties-common wget jq curl
 
@@ -13,11 +17,9 @@ fi
 
 GCONF="/etc/grafana/grafana.ini"
 
-# -----------------------------------------------
-# ● Fuerza credenciales admin antes del primer arranque
+# Fuerza credenciales admin
 grep -q "^admin_password" "$GCONF" || \
   sed -i '/^\[security\]/a admin_user = admin\nadmin_password = admin' "$GCONF"
-# -----------------------------------------------
 
 # Activar modo anónimo
 if grep -q "^\[auth.anonymous\]" "$GCONF"; then
@@ -45,22 +47,28 @@ chown -R grafana:grafana /etc/grafana /var/lib/grafana /var/log/grafana
 systemctl enable grafana-server
 systemctl restart grafana-server
 
-# Crear API key de administrador si no existe
+# Esperar a que Grafana esté disponible
+GRAFANA_URL="http://localhost:3000/api/health"
+TRIES=0
+MAX_TRIES=60
+
+echo "[INFO] Esperando a que Grafana esté accesible en $GRAFANA_URL..."
+
+while ! curl -s --fail "$GRAFANA_URL" >/dev/null; do
+  ((TRIES++))
+  if [[ $TRIES -ge $MAX_TRIES ]]; then
+    echo "❌ Timeout: Grafana no respondió tras $((TRIES * 2)) segundos"
+    journalctl -u grafana-server --no-pager | tail -n 30
+    exit 1
+  fi
+  sleep 2
+done
+
+echo "✅ Grafana está accesible tras $((TRIES * 2)) segundos"
+
+# Crear API key si no existe
 API_KEY_FILE="/etc/rsnort-agent/grafana.token"
 if [[ ! -f "$API_KEY_FILE" ]]; then
-  echo "[INFO] Esperando a que Grafana esté accesible en http://localhost:3000..."
-
-  TRIES=0
-  MAX_TRIES=30
-  until curl -s http://localhost:3000/api/health >/dev/null; do
-    sleep 2
-    ((TRIES++))
-    if [[ $TRIES -ge $MAX_TRIES ]]; then
-      echo "❌ Timeout: Grafana no respondió tras $((TRIES*2)) segundos"
-      exit 1
-    fi
-  done
-
   echo "[INFO] Grafana disponible, generando API key..."
 
   KEY=$(curl -s -u admin:admin -H "Content-Type: application/json" \
