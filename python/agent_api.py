@@ -5,6 +5,8 @@ from pydantic import BaseModel
 from fastapi.responses import FileResponse
 from typing import List, Optional
 import pymysql, subprocess, os, tempfile, re
+import requests
+from fastapi.responses import JSONResponse
 import io
 import json
 import csv
@@ -17,6 +19,9 @@ COMMUNITY_RULES = "/usr/local/snort/etc/snort/snort3-community-rules/snort3-comm
 SNORT_CONF = "/usr/local/snort/etc/snort/snort.lua"
 ARCHIVE_DIR = "/var/log/snort/archived"
 ALERT_JSON = "/opt/snort/logs/live/alert_json.txt"
+GRAFANA_URL = "http://localhost:3000"
+GRAFANA_USER = "admin"
+GRAFANA_PASS = "admin"
 
 # Servicios gestionables
 MANAGED_SERVICES = {
@@ -220,3 +225,16 @@ def get_last_alert():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/grafana/dashboard-url", summary="Obtener URL del dashboard principal de Grafana")
+def get_dashboard_url():
+    try:
+        r = requests.get(f"{GRAFANA_URL}/api/search", auth=(GRAFANA_USER, GRAFANA_PASS))
+        r.raise_for_status()
+        dashboards = r.json()
+        for d in dashboards:
+            if d.get("type") == "dash-db":
+                return {"url": f"{GRAFANA_URL}{d['url']}"}
+        raise HTTPException(status_code=404, detail="No se encontró ningún dashboard")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
