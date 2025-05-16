@@ -32,7 +32,7 @@ export RSNORT_DB_USERNAME="$DB_USER"
 export RSNORT_DB_PASSWORD="$DB_PASS"
 export RSNORT_DB_NAME="$DB_NAME"
 EOF
-chmod 600 "$ENV_SH"
+chmod 644 "$ENV_SH"
 
 # 3. env.service para systemd (sin export)
 ENV_SYSTEMD=$AGENT_STATE/env.service

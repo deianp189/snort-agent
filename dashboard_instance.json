@@ -5,12 +5,19 @@
         "builtIn": 1,
         "datasource": {
           "type": "mysql",
-          "uid": "aela6jkwu1bswb"
+          "uid": "${snort}"
         },
         "enable": true,
         "hide": true,
         "iconColor": "rgba(0, 211, 255, 1)",
         "name": "Annotations & Alerts",
+        "target": {
+          "dataset": "rsnort_agent",
+          "editorMode": "builder",
+          "format": "table",
+          "rawSql": "",
+          "refId": "Anno"
+        },
         "type": "dashboard"
       }
     ]
@@ -19,7 +26,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 4,
+  "id": 2,
   "links": [
     {
       "asDropdown": true,
@@ -45,7 +52,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -137,10 +144,14 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "dataset": "performance_schema",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${snort}"
+          },
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
@@ -165,13 +176,13 @@
           }
         }
       ],
-      "title": "Panel Title",
+      "title": "Temperatura CPU (ºC)",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -247,10 +258,14 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "dataset": "performance_schema",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${snort}"
+          },
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
@@ -294,7 +309,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -371,7 +386,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "bucketAggs": [
@@ -389,7 +404,7 @@
           "dataset": "performance_schema",
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -431,7 +446,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -493,7 +508,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "bucketAggs": [
@@ -511,7 +526,7 @@
           "dataset": "performance_schema",
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -553,7 +568,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -614,7 +629,7 @@
         "textMode": "auto",
         "wideLayout": true
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "bucketAggs": [
@@ -632,7 +647,7 @@
           "dataset": "performance_schema",
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -687,7 +702,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -943,7 +958,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "alias": "Low",
@@ -973,7 +988,7 @@
           ],
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -1015,7 +1030,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1030,20 +1045,21 @@
             }
           },
           "decimals": 0,
+          "fieldMinMax": false,
           "mappings": [],
           "unit": "short"
         },
         "overrides": [
           {
             "matcher": {
-              "id": "byName",
-              "options": "Low - Detection of a Network Scan"
+              "id": "byRegexp",
+              "options": "^Severa"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#96D98D",
+                  "fixedColor": "dark-red",
                   "mode": "fixed"
                 }
               }
@@ -1051,14 +1067,14 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "Low - Generic Protocol Command Decode"
+              "id": "byRegexp",
+              "options": "^Media"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#C8F2C2",
+                  "fixedColor": "orange",
                   "mode": "fixed"
                 }
               }
@@ -1066,44 +1082,14 @@
           },
           {
             "matcher": {
-              "id": "byName",
-              "options": "Low - Not Suspicious Traffic"
+              "id": "byRegexp",
+              "options": "^Baja"
             },
             "properties": [
               {
                 "id": "color",
                 "value": {
-                  "fixedColor": "#37872D",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Medium - Attempted Information Leak"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#FF780A",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Medium - Potentially Bad Traffic"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "#E0B400",
+                  "fixedColor": "green",
                   "mode": "fixed"
                 }
               }
@@ -1135,7 +1121,7 @@
           "calcs": [
             "sum"
           ],
-          "fields": "",
+          "fields": "/^value$/",
           "values": true
         },
         "tooltip": {
@@ -1144,7 +1130,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "alias": "",
@@ -1197,7 +1183,7 @@
           "dataset": "performance_schema",
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -1213,7 +1199,7 @@
           ],
           "query": "application_name:snort-alerts",
           "rawQuery": true,
-          "rawSql": "SELECT\r\n  CONCAT(\r\n    CASE\r\n      WHEN priority = 1 THEN 'High'\r\n      WHEN priority = 2 THEN 'Medium'\r\n      WHEN priority = 3 THEN 'Low'\r\n    END,\r\n    ' - ',\r\n    msg\r\n  ) AS metric,\r\n  COUNT(*) AS value\r\nFROM alerts\r\nWHERE timestamp >= FROM_UNIXTIME(${__from} / 1000)\r\n  AND timestamp <= FROM_UNIXTIME(${__to} / 1000)\r\nGROUP BY priority, msg\r\nORDER BY value DESC;\r\n",
+          "rawSql": "SELECT\r\n  CONCAT(\r\n    severity, ' - ', msg\r\n  ) AS label,\r\n  COUNT(*) AS value\r\nFROM (\r\n  SELECT\r\n    msg,\r\n    CASE \r\n      WHEN priority = 1 THEN 'Severa'\r\n      WHEN priority = 2 THEN 'Media'\r\n      WHEN priority = 3 THEN 'Baja'\r\n    END AS severity\r\n  FROM alerts\r\n  WHERE $__timeFilter(timestamp)\r\n) AS sub\r\nGROUP BY label\r\n",
           "refId": "A",
           "sql": {
             "columns": [
@@ -1241,7 +1227,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1293,7 +1279,7 @@
           "sort": "asc"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "bucketAggs": [
@@ -1323,7 +1309,7 @@
           "dataset": "performance_schema",
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -1367,7 +1353,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1420,7 +1406,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "bucketAggs": [
@@ -1450,7 +1436,7 @@
           "dataset": "performance_schema",
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -1494,7 +1480,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1547,7 +1533,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "bucketAggs": [
@@ -1577,7 +1563,7 @@
           "dataset": "performance_schema",
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -1621,7 +1607,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1673,7 +1659,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "bucketAggs": [
@@ -1703,7 +1689,7 @@
           "dataset": "performance_schema",
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -1747,7 +1733,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -1949,7 +1935,7 @@
           "sort": "none"
         }
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "bucketAggs": [
@@ -1979,7 +1965,7 @@
           "dataset": "performance_schema",
           "datasource": {
             "type": "mysql",
-            "uid": "aela6jkwu1bswb"
+            "uid": "${snort}"
           },
           "dsType": "elasticsearch",
           "editorMode": "code",
@@ -2021,7 +2007,7 @@
     {
       "datasource": {
         "type": "mysql",
-        "uid": "aela6jkwu1bswb"
+        "uid": "${snort}"
       },
       "fieldConfig": {
         "defaults": {
@@ -2116,10 +2102,14 @@
         "showHeader": true,
         "sortBy": []
       },
-      "pluginVersion": "11.6.1",
+      "pluginVersion": "12.0.0",
       "targets": [
         {
           "dataset": "performance_schema",
+          "datasource": {
+            "type": "mysql",
+            "uid": "${snort}"
+          },
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
@@ -2153,7 +2143,20 @@
   "schemaVersion": 41,
   "tags": [],
   "templating": {
-    "list": []
+    "list": [
+      {
+        "current": {
+          "text": "Snort-MariaDB",
+          "value": "aelbk73ja9mgwa"
+        },
+        "name": "snort",
+        "options": [],
+        "query": "mysql",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      }
+    ]
   },
   "time": {
     "from": "now-6h",
@@ -2163,5 +2166,5 @@
   "timezone": "browser",
   "title": "Snort IDS/IPS Dashboard",
   "uid": "ALgSiPiWk",
-  "version": 10
+  "version": 14
 }

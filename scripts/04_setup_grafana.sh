@@ -48,12 +48,33 @@ systemctl restart grafana-server
 # Crear API key de administrador si no existe
 API_KEY_FILE="/etc/rsnort-agent/grafana.token"
 if [[ ! -f "$API_KEY_FILE" ]]; then
-  echo "[INFO] Esperando a que Grafana arranque para generar API key..."
-  sleep 5
+  echo "[INFO] Esperando a que Grafana esté accesible en http://localhost:3000..."
+
+  TRIES=0
+  MAX_TRIES=30
+  until curl -s http://localhost:3000/api/health >/dev/null; do
+    sleep 2
+    ((TRIES++))
+    if [[ $TRIES -ge $MAX_TRIES ]]; then
+      echo "❌ Timeout: Grafana no respondió tras $((TRIES*2)) segundos"
+      exit 1
+    fi
+  done
+
+  echo "[INFO] Grafana disponible, generando API key..."
+
   KEY=$(curl -s -u admin:admin -H "Content-Type: application/json" \
     -d '{"name":"rsnort-agent","role":"Admin"}' \
     http://localhost:3000/api/auth/keys | jq -r .key)
+
+  if [[ -z "$KEY" || "$KEY" == "null" ]]; then
+    echo "❌ Error: no se pudo generar la API key. Verifica las credenciales o la configuración de Grafana."
+    exit 1
+  fi
+
   echo "$KEY" > "$API_KEY_FILE"
   chmod 600 "$API_KEY_FILE"
   echo "[INFO] API key guardada en $API_KEY_FILE"
 fi
+
+echo "✅ Configuración de Grafana completada correctamente."
