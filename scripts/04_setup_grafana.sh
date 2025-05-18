@@ -32,8 +32,9 @@ echo "[INFO] URL externa:              $BASE_URL"
 
 # ─────────────────────────── Instalación de Grafana
 if ! command -v grafana-server &>/dev/null; then
-  wget -qO- https://packages.grafana.com/gpg.key | apt-key add -
-  add-apt-repository -y "deb https://packages.grafana.com/oss/deb stable main"
+curl -fsSL https://packages.grafana.com/gpg.key | gpg --dearmor -o /usr/share/keyrings/grafana.gpg
+echo "deb [signed-by=/usr/share/keyrings/grafana.gpg] https://packages.grafana.com/oss/deb stable main" \
+  > /etc/apt/sources.list.d/grafana.list
   apt-get update -y
   apt-get install -y grafana
 fi
