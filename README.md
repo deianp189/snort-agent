@@ -68,17 +68,23 @@ alert_json = {
   fields = [[timestamp proto dir src_addr src_port dst_addr dst_port msg sid gid priority]]
 }
 ```
-
 ### API (FastAPI)
 
-| Método | Ruta       | Descripción                     |
-| ------ | ---------- | ------------------------------- |
-| GET    | `/alerts`  | Últimas alertas                 |
-| GET    | `/metrics` | Métricas del sistema            |
-| GET    | `/status`  | Estado del sistema              |
-| GET    | `/rules`   | Reglas activas                  |
-| PUT    | `/rules`   | Subir nuevas reglas (plaintext) |
-| POST   | `/restart` | Reinicia Snort                  |
+| Método  | Ruta                               | Descripción                                        |
+| ------- | ---------------------------------- | -------------------------------------------------- |
+| GET     | `/status`                         | Estado del sistema                                 |
+| GET     | `/services/status`                | Estado de los servicios principales                |
+| POST    | `/services/restart`               | Reinicia el servicio principal (Snort, etc.)       |
+| GET     | `/alerts`                         | Obtener todas las alertas actuales                 |
+| GET     | `/alerts/last`                    | Obtener la última alerta registrada                |
+| GET     | `/metrics`                        | Métricas del sistema (CPU, RAM, etc.)              |
+| GET     | `/rules`                          | Listado de reglas activas                          |
+| POST    | `/rules`                          | Añadir una nueva regla                             |
+| DELETE  | `/rules/{sid}`                    | Eliminar una regla por su SID                      |
+| GET     | `/archived-files`                 | Listar archivos de alertas archivadas              |
+| GET     | `/archived-files/{filename}`      | Descargar un archivo de alertas archivadas         |
+| GET     | `/download-alerts`                | Descargar alertas activas en formato CSV           |
+| GET     | `/grafana/dashboard-url`          | Obtener URL del dashboard principal de Grafana     |
 
 ### Grafana (`grafana.ini`)
 
